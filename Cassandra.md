@@ -52,4 +52,19 @@ To be able to query data faster, we generally create denormalized views, which e
 - We're going to denormalize for performance
 - High availability is complicated, requires additional operation overhead
 
+### Lessons Learned
+
+- Consistency is not practical
+  - So we give it up
+- Manual sharding & rebalancing is hard - meeds writing a lot of code
+  - So let's build in - push the responsibility to the cluster
+- Every moving part makes systems more complex
+  - So let's simplify our architecture - no more master/ slave
+- Scaling is expensive - vertical scaling is expensive, only use commodity hardware
+- Scatter/ gather no good - We want to achieve data locality, so that there is no extra latency in scaling the entire cluster to retrieve records. This is done with better data modeling
+
+
+
+
+
  
