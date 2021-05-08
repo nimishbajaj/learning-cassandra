@@ -1,5 +1,9 @@
 # Cassandra
 
+[TOC]
+
+
+
 # Introduction
 
 ## Problems while scaling Relational Databases
@@ -63,8 +67,73 @@ To be able to query data faster, we generally create denormalized views, which e
 - Scaling is expensive - vertical scaling is expensive, only use commodity hardware
 - Scatter/ gather no good - We want to achieve data locality, so that there is no extra latency in scaling the entire cluster to retrieve records. This is done with better data modeling
 
+## Cassandra Overview
+
+### What is Apache Cassandra?
+
+- Fast distributed database
+- High availability
+- Linear scalability
+- Predictable performance
+- NO single point of failure
+- Multi - data center
+- Commodity Hardware
+- Easy to manage operationally
+- Not a drop in replacement for RDBMS - **Have to design the application around Cassandra's data model, we cannot just simply follow the same data model in Cassandra**
+
+## Hash Ring
+
+- No master/ slave/ replica sets
+- No config servers, zookeeper
+- Data is partitioned around the ring
+- Data is replicated to RF=N servers
+- All nodes hold data and can answer queries (both read & writes)
+- Location of data on ring is determined by partitioned key
+
+![image-20210508201800210](Cassandra.assets/image-20210508201800210.png)
 
 
 
+**When we create a table in Cassandra we assign a partition key, the value of the partition key is run through a consistent hashing function and the depending on the output it is determined in which node the data will be stored** 
 
- 
+### CAP Tradeoffs
+
+- Impossible to be both consistent and highly available during a network partition
+- Latency between data centers also makes consistency impractical
+- Cassandra chooses Availability & Partition tolerance over Consistency
+
+## Replication
+
+How many copies of each piece of data should there be on the cluster
+
+- Data is replicated automatically
+- You pick number of servers
+- Called "replication factor" or RF
+- Data is ALWAYS replicated to each replica
+- If a machine is down, missing data is replayed via a hinted handoff
+
+![image-20210508202431481](Cassandra.assets/image-20210508202431481.png)
+
+
+
+### Consistency Level
+
+- Per query consistency - for both read and write
+- Replicated factor is honored irrespective of the Level of the Consistency
+- How many replicas for query to respond to OK
+  - ALL - All replicas
+  - QUORUM - Majority, so in case of replication of 3, this implies 2 out of 3 (51% or greater)
+  - ONE - One replica
+
+**Consistency level has impact on how fast we can read or write data, it is also going to impact the availability, if the consistency level is set to all, even a single node failing can make the cluster unavailable. With Level 1, the cluster will be highly available**
+
+### Multi DC
+
+- Typical usage: clients write to local DC, replicates async to other DCs
+- Replication factor per keyspace per datacenter
+- Datacenters can be physical or logical
+
+![image-20210508203110903](Cassandra.assets/image-20210508203110903.png)
+
+**Logical datacenters are useful for segregating OLTP queries which need fast responses to OLAP queries, hence the data will be un sync, but Analytics queries will not impact the OLTP queries**
+
