@@ -81,7 +81,7 @@ To be able to query data faster, we generally create denormalized views, which e
 - Easy to manage operationally
 - Not a drop in replacement for RDBMS - **Have to design the application around Cassandra's data model, we cannot just simply follow the same data model in Cassandra**
 
-## Hash Ring
+### Hash Ring
 
 - No master/ slave/ replica sets
 - No config servers, zookeeper
@@ -102,7 +102,7 @@ To be able to query data faster, we generally create denormalized views, which e
 - Latency between data centers also makes consistency impractical
 - Cassandra chooses Availability & Partition tolerance over Consistency
 
-## Replication
+### Replication
 
 How many copies of each piece of data should there be on the cluster
 
@@ -136,4 +136,87 @@ How many copies of each piece of data should there be on the cluster
 ![image-20210508203110903](Cassandra.assets/image-20210508203110903.png)
 
 **Logical datacenters are useful for segregating OLTP queries which need fast responses to OLAP queries, hence the data will be un sync, but Analytics queries will not impact the OLTP queries**
+
+
+
+## Cassandra Internals and Choosing a Distribution
+
+### The Write Path
+
+- Writes are written to any node in the cluster (Coordinator) - **Whatever node you happen to be talking to in that request**, for that write request this node does the coordination - (**like a temp master**)
+- Writes are written to commit log, then to memtable  - **commit log is an append only datastructure, it is going to be sequential IO** , then it merges to the memtable, which is an in-memory representation of the table
+- Every write includes a timestamp
+- Memtable flushed to disk periodically (sstable) - **When the memtable starts to exceed the memory, we flush it to disk as sstable** 
+- New memtable is created in memory
+- Deletes are a special write case, called a "tombstone" -  **Cassandra never does any updates in-place or deletes in-place, the sstables are immutable, commit log is immutable. So when we delete something Cassandra just marks that there is no data here, a tombstone has a timestamp and it indicates that there is no data at that particular timestamp for which we deleted a record**
+
+![image-20210508204455475](Cassandra.assets/image-20210508204455475.png)
+
+
+
+### What is an SSTable?
+
+- Immutable data file for row storage 
+- Every write includes a timestamp of when it was written
+- Partition is spread across multiple SSTables
+- Same column can be in multiple SSTables
+- Merged through compaction, only latest timestamp is kept
+- Deletes are written as tombstones
+- Easy backups!
+
+![image-20210508205032133](Cassandra.assets/image-20210508205032133.png)
+
+
+
+### The Read Path
+
+- Any server may be required, it acts as the coordinator
+- Contacts nodes with the requested key
+- On each node, data is pulled from SSTables and merged
+- Consistency<ALL performs read repair in background (read_repair_chance) - **This the chance that whenever you do a read, all the nodes have the latest updated data**. The default value is 10%, so for 10% of the reads Cassandra is going to attempt to keep all of the data in sync.
+
+![image-20210508225802934](Cassandra.assets/image-20210508225802934.png)
+
+**The storage type SSD vs HDD is going to have a huge impact on the read performance**
+
+### Picking a distribution
+
+#### Open Source
+
+- Perfect for hacking
+- Latest, bleeding edge features
+
+#### DataStax Enterprise
+
+- Integrated Multi-DC Search
+- Integrated Spark for Analytics
+- Focused on stable releases for enterprise
+- Additional QA
+
+
+
+## CQL
+
+### Keyspaces
+
+- Top-level namespace/container
+- Similar to a relational database schema
+
+```CQL
+CREATE KEYSPACE killrvideo
+WITH REPLICATION = {
+	'class': 'SimpleStrategy',
+	'replication_factor': 1
+};
+```
+
+- Replication parameters required
+
+### USE
+
+- USE switches between keyspaces
+
+```cql
+USE killrvideo;
+```
 
