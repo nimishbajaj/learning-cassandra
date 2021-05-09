@@ -1,4 +1,4 @@
-# Cassandra
+
 
 [TOC]
 
@@ -195,6 +195,8 @@ How many copies of each piece of data should there be on the cluster
 
 
 
+# Foundations
+
 ## CQL
 
 ### Keyspaces
@@ -219,4 +221,109 @@ WITH REPLICATION = {
 ```cql
 USE killrvideo;
 ```
+
+### Tables
+
+- Keyspaces contain tables
+- Tables contain data
+
+```cql
+CREATE TABLE table1 (
+    column1 TEXT,
+    column2 TEXT,
+    column3 TEXT,
+    PRIMARY KEY (column1)
+);
+
+CREATE TABLE users (
+    user_id UUID,
+    first_name TEXT,
+    last_name TEXT,
+    PRIMARY KEY (user_id)
+);
+```
+
+### UUID and TIMEUUID
+
+**Used in place of integer IDs because Cassandra is a distributed database**
+
+- Universally Unique Identifier
+  - Generate via uuid()
+
+- TIMEUUID embeds a TIMESTAMP value
+  - Sortable
+  - Generate via now()
+  - Time can be extracted from TIMEUUID
+
+**UUID enabled nodes to generate unique ids without any inter-node communication**
+
+### INSERT
+
+**Similar to relational syntax**
+
+```cql
+INSERT INTO users (user_id, first_name, last_name)
+VALUES (uuid(), 'Joseph', 'Chu')
+```
+
+### COPY
+
+- Imports/exports CSV
+
+```CQL
+COPY table1 (column1, column2, column3) FROM 'table1data.csv'
+WITH HEADER=TRUE;
+```
+
+
+
+## Partitions
+
+- Indicated as the first key in the PRIMAY KEY constraint of create table
+- If more than one columns is required for partitioning, we can add them in parenthesis
+
+TODO: Add details here
+
+## Clustering Columns
+
+PRIMARY KEY ((partition_columns), clustering_columns)
+
+- Clustering columns are the remaining columns in the PRIMARY KEY apart from the ones considered for Partitioning
+- Clustering columns are used to sort the data in individual partitions
+
+![image-20210509113728564](Cassandra.assets/image-20210509113728564.png)
+
+**Once the data is loaded, the primary key cannot be changed without creating a new table, alter table doesn't work for modifying the primary key**
+
+**The sorting on clustering columns is pre-optimized and really fast**
+
+
+
+### Querying Clustering Columns
+
+- **You must first provide a partition key** 
+- Clustering columns can follow thereafter
+- You can perform either equality (=) or range queries (<, >) on clustering columns
+- **All equality comparisons must come before inequality comparisons**
+- Since data is sorted on disk, range searches are binary search followed by a linear read
+
+**While Querying we need to provide the partitioning keys and clustering keys in order, this is to make sure we reach the right partition and the right place in the sorted data to fetch the records from**
+
+**?? If you are unaware of the way data needs to be pulled from the system, it is better to not include the columns as clustering columns since this makes it important to include them while querying. Although having clustering columns can give very high performance for specify queries,  it might not be useful for OLAP scenario ?? **
+
+## Allow Filtering - Use in very specific use cases
+
+- ALLOW FILTERING relaxes the query on partition key constraint
+- You can then query on just clustering columns
+- Causes Apache Cassandra to scan all partitions in the table
+- Don't use it
+  - Unless you really have to
+  - Best on small data sets
+  - But still, don't use it, seriously
+
+
+
+
+
+
 
